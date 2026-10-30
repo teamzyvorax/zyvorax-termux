@@ -12,8 +12,11 @@ else
 fi
 mkdir -p "$WORK/packages/zyvorax"
 cp "$ROOT"/packages/zyvorax/* "$WORK/packages/zyvorax/"
-echo "Building ZYVORAX for $ARCH using the official Termux package builder."
-echo "If this is a fresh Ubuntu machine, first follow the official Termux build-environment setup."
 cd "$WORK"
+if [[ "${ZYVORAX_SKIP_SETUP:-0}" != "1" ]]; then
+  echo "Preparing the official Termux build environment (requires sudo on Ubuntu)."
+  ./scripts/setup-ubuntu.sh
+fi
+echo "Building ZYVORAX for $ARCH using the official Termux package builder."
 ./build-package.sh -a "$ARCH" -I zyvorax
 echo "Build finished. Check $WORK/output/ for the generated .deb package."
