@@ -35,7 +35,6 @@ jobs:
         run: |
           grep -q '^TERMUX_PKG_VERSION=' packages/zyvorax/build.sh
           grep -q '^TERMUX_PKG_PLATFORM_INDEPENDENT=true$' packages/zyvorax/build.sh
-          grep -q '^Package: zyvorax$' /dev/null 2>/dev/null || true
 
       - name: Check whitespace
         run: git diff --check
