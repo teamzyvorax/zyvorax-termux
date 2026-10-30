@@ -1,0 +1,31 @@
+name: ZYVORAX package checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate shell syntax
+        run: |
+          bash -n packages/zyvorax/zyvorax
+          bash -n packages/zyvora/zyvorax
+          bash -n packages/zyvorax/build.sh
+          bash -n packages/zyvora/build.sh
+
+      - name: Validate package metadata
+        run: |
+          grep -q '^TERMUX_PKG_VERSION=' packages/zyvorax/build.sh
+          grep -q '^TERMUX_PKG_PLATFORM_INDEPENDENT=true$' packages/zyvorax/build.sh
+          grep -q 'zyvorax' packages/zyvorax/zyvorax
+
+      - name: Check whitespace
+        run: git diff --check
