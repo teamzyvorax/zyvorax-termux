@@ -13,9 +13,10 @@ fi
 mkdir -p "$WORK/packages/zyvorax"
 cp "$ROOT"/packages/zyvorax/* "$WORK/packages/zyvorax/"
 cd "$WORK"
-if [[ "${ZYVORAX_SKIP_SETUP:-0}" != "1" ]]; then
+if [[ "${ZYVORAX_SKIP_SETUP:-0}" != "1" && ! -f .zyvorax-setup-done ]]; then
   echo "Preparing the official Termux build environment (requires sudo on Ubuntu)."
   ./scripts/setup-ubuntu.sh
+  touch .zyvorax-setup-done
 fi
 echo "Building ZYVORAX for $ARCH using the official Termux package builder."
 ./build-package.sh -a "$ARCH" -I zyvorax
