@@ -1,0 +1,62 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -eu
+
+VERSION="1.0.0"
+
+usage() {
+    cat <<'EOF'
+ZYVORAX Math Lab
+
+Usage:
+  zyvora                 Open interactive menu
+  zyvora calc EXPR       Calculate an arithmetic expression
+  zyvora help            Show this help
+  zyvora version         Show version
+
+Examples:
+  zyvora calc '25 * 40'
+  zyvora calc '(12 + 8) / 4'
+
+Expressions are evaluated by bc; do not enter shell commands.
+EOF
+}
+
+calc() {
+    if [ "$#" -eq 0 ]; then
+        echo "Usage: zyvora calc 'EXPRESSION'" >&2
+        exit 2
+    fi
+    printf '%s\n' "$*" | bc -l
+}
+
+case "${1:-}" in
+    calc)
+        shift
+        calc "$@"
+        ;;
+    help|-h|--help)
+        usage
+        ;;
+    version|--version)
+        printf 'ZYVORAX Math Lab %s\n' "$VERSION"
+        ;;
+    "")
+        printf 'ZYVORAX Math Lab %s\n' "$VERSION"
+        printf 'Type an expression, or type help/exit.\n'
+        while true; do
+            printf 'zyvorax> '
+            IFS= read -r line || break
+            case "$line" in
+                exit|quit) break ;;
+                help) usage ;;
+                "") ;;
+                *) printf '%s\n' "$line" | bc -l || true ;;
+            esac
+        done
+        ;;
+    *)
+        echo "Unknown command: $1" >&2
+        usage >&2
+        exit 2
+        ;;
+esac
