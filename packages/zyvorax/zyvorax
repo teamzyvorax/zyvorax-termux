@@ -1,0 +1,139 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -Eeuo pipefail
+
+VERSION="0.1.0"
+CYAN='\033[1;36m'; GREEN='\033[1;32m'; RESET='\033[0m'
+
+need_termux() {
+    if [[ -z "${PREFIX:-}" || "$PREFIX" != /data/data/com.termux/files/usr* ]]; then
+        echo "ZYVORAX requires Termux on Android." >&2
+        exit 1
+    fi
+}
+confirm() {
+    local answer
+    read -r -p "$1 [y/N] " answer
+    [[ "$answer" =~ ^([yY]|[yY][eE][sS])$ ]]
+}
+usage() {
+cat <<'HELP'
+ZYVORAX ALL-IN-ONE
+
+Usage:
+  zyvorax                     Open the interactive menu
+  zyvorax help                Show help
+  zyvorax version             Show version
+  zyvorax doctor              Diagnose the Termux environment
+  zyvorax update              Refresh package indexes
+  zyvorax upgrade             Upgrade installed packages (asks first)
+  zyvorax install PKG...      Install packages
+  zyvorax remove PKG...       Remove packages (asks first)
+  zyvorax search QUERY        Search packages
+  zyvorax dev                 Install developer tools (asks first)
+  zyvorax storage             Request shared-storage permission
+  zyvorax calc EXPR           Calculate a math expression
+
+Examples:
+  zyvorax install git python
+  zyvorax calc '25 * 40'
+  zyvorax doctor
+
+ZYVORAX never silently upgrades packages at every launch.
+HELP
+}
+header() {
+    printf '%b\n  ███████╗██╗   ██╗██╗   ██╗ ██████╗ ██████╗  █████╗ ██╗  ██╗%b\n' "$CYAN" "$RESET"
+    printf '  ZYVORAX ALL-IN-ONE  |  v%s\n\n' "$VERSION"
+}
+doctor() {
+    need_termux
+    echo "ZYVORAX environment diagnostics"
+    command -v pkg >/dev/null 2>&1 && echo "[OK] pkg found" || echo "[FAIL] pkg not found"
+    command -v apt >/dev/null 2>&1 && echo "[OK] apt found" || echo "[FAIL] apt not found"
+    [[ -d "$PREFIX" ]] && echo "[OK] PREFIX: $PREFIX" || echo "[FAIL] PREFIX missing"
+    echo "Architecture: $(dpkg --print-architecture 2>/dev/null || uname -m)"
+    echo "Android: $(getprop ro.build.version.release 2>/dev/null || echo unknown)"
+    df -h "$PREFIX" 2>/dev/null || true
+}
+update_pkgs() { need_termux; pkg update; }
+upgrade_pkgs() {
+    need_termux
+    if confirm "Upgrade all installed packages now?"; then pkg upgrade -y; else echo "Cancelled."; fi
+}
+install_pkgs() {
+    need_termux
+    (($#)) || { echo "Usage: zyvorax install PKG..."; return 2; }
+    pkg install "$@"
+}
+remove_pkgs() {
+    need_termux
+    (($#)) || { echo "Usage: zyvorax remove PKG..."; return 2; }
+    if confirm "Remove $* ?"; then pkg uninstall "$@"; else echo "Cancelled."; fi
+}
+search_pkgs() {
+    need_termux
+    (($#)) || { echo "Usage: zyvorax search QUERY"; return 2; }
+    pkg search "$*"
+}
+dev_tools() {
+    need_termux
+    local packages=(git curl wget openssh python nodejs-lts nano vim tar unzip zip)
+    if confirm "Install developer tools: ${packages[*]} ?"; then pkg install "${packages[@]}"; else echo "Cancelled."; fi
+}
+calc_expr() {
+    (($#)) || { echo "Usage: zyvorax calc 'EXPRESSION'"; return 2; }
+    printf '%s\n' "$*" | bc -l
+}
+storage_access() { need_termux; termux-setup-storage; }
+info() {
+    need_termux
+    printf 'ZYVORAX %s\nPREFIX: %s\nArchitecture: %s\n' "$VERSION" "$PREFIX" "$(dpkg --print-architecture 2>/dev/null || uname -m)"
+}
+menu() {
+    need_termux
+    while true; do
+        header
+        cat <<'MENU'
+  1) Update package indexes
+  2) Upgrade packages
+  3) Install packages
+  4) Developer tools
+  5) Environment doctor
+  6) Storage permission
+  7) System information
+  8) Calculator
+  0) Exit
+MENU
+        read -r -p "zyvorax> " choice || break
+        case "$choice" in
+            1) update_pkgs ;;
+            2) upgrade_pkgs ;;
+            3) read -r -p "Package names: " names; if [[ -n "$names" ]]; then read -r -a args <<< "$names"; install_pkgs "${args[@]}"; fi ;;
+            4) dev_tools ;;
+            5) doctor ;;
+            6) storage_access ;;
+            7) info ;;
+            8) read -r -p "Expression: " expr; [[ -n "$expr" ]] && calc_expr "$expr" ;;
+            0) break ;;
+            *) echo "Invalid option." ;;
+        esac
+        echo
+        read -r -p "Press Enter to continue..." _ || true
+    done
+}
+case "${1:-menu}" in
+    menu) menu ;;
+    help|-h|--help) usage ;;
+    version|-v|--version) echo "ZYVORAX $VERSION" ;;
+    doctor) doctor ;;
+    update) update_pkgs ;;
+    upgrade) upgrade_pkgs ;;
+    install) shift; install_pkgs "$@" ;;
+    remove|uninstall) shift; remove_pkgs "$@" ;;
+    search) shift; search_pkgs "$@" ;;
+    dev) dev_tools ;;
+    storage) storage_access ;;
+    calc) shift; calc_expr "$@" ;;
+    info) info ;;
+    *) echo "Unknown command: $1" >&2; usage >&2; exit 2 ;;
+esac
